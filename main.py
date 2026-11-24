@@ -1,32 +1,38 @@
 #!/usr/bin/env python3
 """Write the one-star review entry to /output/entry.txt (deterministic, offline)."""
 
+import hashlib
 import sys
+from pathlib import Path
+from typing import Sequence
 
-OUTPUT_PATH = "/output/entry.txt"
-ENTRY_TEXT = (
+OUTPUT_PATH = Path("/output/entry.txt")
+ENTRY_TEXT: str = (
     "Sight: at forty it starts moving the menu to arm's length "
     "and expects me to pretend that's how reading works."
 )
+ENTRY_BYTES: bytes = ENTRY_TEXT.encode("utf-8")
 
 
-def write_entry() -> None:
-    with open(OUTPUT_PATH, "wb") as handle:
-        handle.write(ENTRY_TEXT.encode("utf-8"))
+def write_entry(path: Path = OUTPUT_PATH) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(ENTRY_BYTES)
 
 
-def check_entry() -> int:
-    with open(OUTPUT_PATH, "rb") as handle:
-        data = handle.read()
-    if data == ENTRY_TEXT.encode("utf-8"):
-        print("match: /output/entry.txt equals entry.txt (%d characters)" % len(ENTRY_TEXT))
+def check_entry(path: Path = OUTPUT_PATH) -> int:
+    data: bytes = path.read_bytes()
+    if data == ENTRY_BYTES:
+        digest: str = hashlib.sha256(data).hexdigest()
+        print(
+            "match: %s (%d chars) sha256 %s" % (path, len(ENTRY_TEXT), digest)
+        )
         return 0
-    print("MISMATCH: /output/entry.txt differs from the annotated entry")
+    print("MISMATCH: %s differs from the committed entry" % path)
     return 1
 
 
-def main() -> int:
-    if len(sys.argv) > 1 and sys.argv[1] == "--check":
+def main(argv: Sequence[str] = sys.argv[1:]) -> int:
+    if "--check" in argv:
         return check_entry()
     write_entry()
     return 0
